@@ -28,10 +28,7 @@ const char* keyword[] = {"char","double","enum","float","int","long",
     "short","signed","struct","union","unsigned","void","for","do",
     "while","break","continue","if","else","goto","switch","case",
     "default","return","auto","extern","register","static","const",
-    "sizeof","typedef","volatile"},
-    * op[] = {"=","==","+","+=","++","-","--","-=","*","*=","/","/="
-    ,"%","%=",">",">=",">>",">>=","<","<=","<<","<<=","!","!=","&","&&"
-    ,"&=","|","||","|=","^","^=","~",".","->"};
+    "sizeof","typedef","volatile"};
 
 char myget(FILE* file){
     char c = fgetc(file);
@@ -77,8 +74,106 @@ void clear(){
     word[curLen] = '\0';
 }
 
+char getWord(char c, FILE* file);
+char getNum(char c, FILE* file, int pos);
+char getString(char c, FILE* file);
+char getChar(char, FILE* file);
+char getOther(char c, FILE* file);
+
+
+int main(int argc, char* argv[])
+{
+
+    const char* file_name = argv[1]; //该字符串变量为识别的C语言程序文件名
+
+    /*程序每次运行只需要考虑识别一个C语言程序;
+      需要使用读取文件的操作,可以在自己的本地环境里创建样例文件进行测试；
+      在自己的IDE里测试时可以将file_name赋其他的值，
+      但注意，最终测评时由平台提供的main参数来传入文件名*/
+    // printf("%s\n",file_name);
+    
+    FILE* file = fopen(file_name,"r"); 
+	if (file == NULL) {
+		return -1;
+	}
+
+    char ch = myget(file);
+    
+    while(ch != EOF){
+        if(ch == ' ' || ch == '\t' || ch == '\n'){
+            ch = myget(file);
+        }else{
+            switch (WordType(ch)){
+                case WLETTER:{
+                    ch = getWord(ch, file);
+                    break;
+                }
+                case WNUMBER:{
+                    if(ch == '0'){
+                        ch = getNum(ch, file, 5);  // ZERO
+                    }else{
+                        ch = getNum(ch, file, 1);  //  DECIMAL
+                    }
+                    
+                    break;
+                }
+                case WSCOLON:{
+                    ch = getChar(ch, file);
+                    break;
+                }
+                case WDCOLON:{
+                    ch = getString(ch, file);
+                    break;
+                }
+                default:{
+                    ch = getOther(ch, file);
+                }
+            }
+        }
+    }
+    fclose(file);
+
+    printf("%d\n", line);
+    for(int i = 0; i < sizeof(sum) / sizeof(sum[0]) - 1; i++){
+        printf("%d", sum[i]);
+        if(i == NUMBER){
+            putchar('\n');
+        }else{
+            putchar(' ');
+        }
+    }
+    printf("%d\n", sum[ERROR]);
+
+	return 0;
+}
+
+
 char getWord(char c, FILE* file){
     int curLine = line;
+    if(c == 'u'){
+        push(c);
+        c = myget(file);
+        if(c == '\''){
+            return getChar(c, file);
+        }else if(c == '"'){
+            return getString(c, file);
+        }else if(c == '8'){
+            push(c);
+            c = myget(file);
+            if(c == '"'){
+                return getString(c, file);
+            }
+        }
+    }else if(c == 'U' || c == 'L'){
+        push(c);
+        c = myget(file);
+        if(c == '\''){
+            return getChar(c, file);
+        }else if(c == '"'){
+            return getString(c, file);
+        }
+    }
+
     while (WordType(c) == WLETTER || WordType(c) == WNUMBER){
         push(c);
         c = myget(file);
@@ -118,15 +213,11 @@ char getWord(char c, FILE* file){
 #define OCERROR     16
 #define LU          17
 #define TERROR      18
+#define FSUFFIX     19
 
-char getNum(char c, FILE* file){
+char getNum(char c, FILE* file, int pos){
     // double a = 0xa.9;
-    int pos, curLine = line;
-    if(c == '0'){
-        pos = ZERO;
-    }else{
-        pos = DECIMAL;
-    }
+    int curLine = line;
     
     while(pos != TERROR && pos != NUMOUT){
         push(c);
@@ -143,6 +234,8 @@ char getNum(char c, FILE* file){
                     pos = OWNU;
                 }else if(c == 'l' || c == 'L'){
                     pos = OWNL;
+                }else if(c == 'f' || c == 'F'){
+                    pos = FSUFFIX;
                 }else if(WordType(c) == WLETTER){
                     pos = NUMERROR;
                 }else{
@@ -156,7 +249,9 @@ char getNum(char c, FILE* file){
                     pos = DOT;
                  }else if(c == 'e' || c == 'E'){
                     pos = SCI;
-                 }else if(WordType(c) == WLETTER){
+                 }else if(c == 'f' || c == 'F' || c == 'l' || c == 'L'){
+                    pos = FSUFFIX;
+                }else if(WordType(c) == WLETTER){
                     pos = NUMERROR;
                  }else{
                     pos = NUMOUT;
@@ -186,7 +281,9 @@ char getNum(char c, FILE* file){
             case SCIN:{
                 if(c >= '0' && c <= '9'){
                     pos = SCIN;
-                 }else if(WordType(c) == WLETTER){
+                 }else if(c == 'f' || c == 'F' || c == 'l' || c == 'L'){
+                    pos = FSUFFIX;
+                }else if(WordType(c) == WLETTER){
                     pos = NUMERROR;
                  }else{
                     pos = NUMOUT;
@@ -208,7 +305,9 @@ char getNum(char c, FILE* file){
                     pos = OWNU;
                 }else if(c == 'l' || c == 'L'){
                     pos = OWNL;
-                }else if(WordType(c) == WLETTER){
+                }else if(c == 'f' || c == 'F'){
+                    pos = FSUFFIX;
+                }else  if(WordType(c) == WLETTER){
                     pos = NUMERROR;
                 }else{
                     pos = NUMOUT;
@@ -324,6 +423,14 @@ char getNum(char c, FILE* file){
                 }
                 break;
             }
+            case FSUFFIX:{
+                if(WordType(c) == WLETTER || WordType(c) == WNUMBER){
+                    pos = NUMERROR;
+                }else{
+                    pos = NUMOUT;
+                }
+                break;
+            }
             case NUMERROR:{
                 if(WordType(c) == WLETTER || WordType(c) == WNUMBER){
                     pos = NUMERROR;
@@ -366,6 +473,7 @@ char getNum(char c, FILE* file){
 #undef OCERROR   
 #undef LU  
 #undef TERROR
+#undef FSUFFIX
 
 char getString(char c, FILE* file){
     push(c);
@@ -670,9 +778,13 @@ char getOther(char c, FILE* file){
     }
     case '.':{
         c = myget(file);
-        printf("%d <OPERATOR,.>\n", curLine);
-        sum[OPERATOR]++;
-        
+        if(WordType(c) == WNUMBER){
+            push('.');
+            c = getNum(c, file, 2); // DOT
+        }else{
+            printf("%d <OPERATOR,.>\n", curLine);
+            sum[OPERATOR]++;  
+        }
         break;
     }
     case '~':{
@@ -689,64 +801,4 @@ char getOther(char c, FILE* file){
     }
     }
     return c;
-}
-int main(int argc, char* argv[])
-{
-
-    const char* file_name = argv[1]; //该字符串变量为识别的C语言程序文件名
-
-    /*程序每次运行只需要考虑识别一个C语言程序;
-      需要使用读取文件的操作,可以在自己的本地环境里创建样例文件进行测试；
-      在自己的IDE里测试时可以将file_name赋其他的值，
-      但注意，最终测评时由平台提供的main参数来传入文件名*/
-    // printf("%s\n",file_name);
-    
-    FILE* file = fopen(file_name,"r"); 
-	if (file == NULL) {
-		return -1;
-	}
-
-    char ch = myget(file);
-    
-    while(ch != EOF){
-        if(ch == ' ' || ch == '\t' || ch == '\n'){
-            ch = myget(file);
-        }else{
-            switch (WordType(ch)){
-                case WLETTER:{
-                    ch = getWord(ch, file);
-                    break;
-                }
-                case WNUMBER:{
-                    ch = getNum(ch, file);
-                    break;
-                }
-                case WSCOLON:{
-                    ch = getChar(ch, file);
-                    break;
-                }
-                case WDCOLON:{
-                    ch = getString(ch, file);
-                    break;
-                }
-                default:{
-                    ch = getOther(ch, file);
-                }
-            }
-        }
-    }
-    fclose(file);
-
-    printf("%d\n", line);
-    for(int i = 0; i < sizeof(sum) / sizeof(sum[0]) - 1; i++){
-        printf("%d", sum[i]);
-        if(i == NUMBER){
-            putchar('\n');
-        }else{
-            putchar(' ');
-        }
-    }
-    printf("%d\n", sum[ERROR]);
-
-	return 0;
 }
