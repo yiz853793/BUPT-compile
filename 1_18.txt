@@ -1,0 +1,24 @@
+@
+void choice(DWORD& t1)
+{
+	DWORD t2 = timeGetTime();
+
+	if (t2 - t1 > 100)   //100ms产生一个烟花弹
+	{
+		int n = rand() % 20;     //0-19
+		if (n < NUM && jet[n].isshoot == false && fire[n].show == false)
+		{
+			//重置烟花弹
+			jet[n].x = rand() % (WND_WIDTH - 20);
+			jet[n].y = rand() % 100 + 400;   //450-549
+			jet[n].hx = jet[n].x;
+			jet[n].hy = rand() % 400;        //0-399
+			jet[n].height = jet[n].y - jet[n].hy;
+			jet[n].isshoot = true;
+
+			//n
+			putimage(jet[n].x, jet[n].y, &jet[n].img[jet[n].n])@;
+		}
+		t1 = t2;
+	}
+}

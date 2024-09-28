@@ -1,0 +1,10 @@
+int main() {
+	int num;
+	printf("please input a number:");
+	scanf("%d", &num);
+
+	char res = '1';
+	char tt = 'y';
+	printf("%c", res);	
+    return 0;
+}

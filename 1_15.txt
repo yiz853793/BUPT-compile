@@ -1,0 +1,10 @@
+int main() {
+ int a= 0; // a = 0
+ double b = 4.3e2;
+ float c = 531.3e-9;
+ float t = 1.1e+1;
+ int c*= a + b; /*
+ adgegasg
+ */
+ printf("hello~, hello world~");
+}

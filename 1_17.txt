@@ -1,0 +1,105 @@
+struct trie_node *new_node(int level)
+{
+	struct trie_node *p = (struct trie_node *)malloc(sizeof(struct trie_node));
+	memset(p, 0, sizeof(struct trie_node));
+	p->level = level + 1;
+	return p;
+}
+// 增加节点
+void trie_add(struct trie_node *node, unsigned char *pattern)
+{
+	unsigned int cnt = pattern[0];
+	if (node->type[cnt] == TRIR_CHILD_TYPE_NULL)
+	{
+		if (cnt)
+			set_child_str(node, cnt, pattern);
+		else
+			set_child_str(node, cnt, NULL);
+		return;
+	}
+	else if (node->type[cnt] == TRIR_CHILD_TYPE_NODE)
+	{
+		trie_add((struct trie_node *)(node->child[cnt]), pattern + 1);
+		return;
+	}
+	else if (node->type[cnt] == TRIR_CHILD_TYPE_LEAF) //分裂问题
+	{
+		if (node->child[cnt] == NULL)
+		return;
+		unsigned char *leaf = (unsigned char *)(node->child[cnt]);
+		struct trie_node *child_node = new_node(node->level);
+		add_child_node(node, cnt, child_node);
+		trie_add(child_node, leaf + 1);
+		trie_add(child_node, pattern + 1);
+		return;
+	}
+}
+BOOL trie_find(struct trie_node *node, unsigned char *p)
+{
+	int index = p[0];
+	if (node->type[index] == TRIR_CHILD_TYPE_NULL)
+		return FALSE;
+	else if (node->type[index] == TRIR_CHILD_TYPE_LEAF)
+	{
+		if (node->child[index] == 0 && p[0] == 0)
+			return TRUE;
+		else if (node->child[index] != 0 && p[0] != 0) //都不为 0，则判断是否相同
+			return strcmp((char *)(p), (char *)(node->child[index])) ==0;
+		else
+			return FALSE;
+	}
+	return trie_find((node->child[index]), p + 1);
+}
+int main()
+{
+	FILE *f = fopen("pattern-gbk", "rt");
+	if (f == NULL)
+	{
+		printf("can not open file 'pattern'");
+		return 1;
+	}
+	struct trie_node *root = new_node(0);
+	char buffer[256];
+	while (fgets(buffer, sizeof(buffer), f) != NULL)
+	{
+		char *p = trim_str(buffer);
+		if (*p == 0)
+		continue;
+		trie_add(root, (unsigned char *)strdup(p));
+	}
+	fclose(f);
+	FILE *fData = fopen("input-gbk", "rt");
+	if (fData == NULL)
+	{
+		printf("can not open file 'input'");
+		return 1;
+	}
+	FILE *fwrite = fopen("yipipei.txt", "w");
+	if (fwrite == NULL)
+	{
+		printf("can not open file 'pattern'");
+		return 1;
+	}
+	int index = 0;
+	int count = 0;
+	while (fgets(buffer, sizeof(buffer), fData) != NULL)
+	{
+		index++;
+		char *p = trim_str(buffer);
+		if (*p == 0)
+		continue;
+		if (trie_find(root, (unsigned char *)p))
+		{
+			count++;
+			printf("%d: %s yes", index, p);
+			fputs(p,fwrite);
+			fprintf(fwrite," ");
+		}
+		else
+			printf("%d: %s no", index, p);
+	}
+	printf("read %d lines, found %d", index, count);
+	fclose(fData);
+	fclose(fwrite);
+	return 0;
+}

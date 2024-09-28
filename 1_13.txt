@@ -1,0 +1,22 @@
+// 暴力美学：20行C代码
+int subarraySum(int *nums, int numsSize, int k) {
+    int count = 0;
+    // 弄个大数组做个暴力的Hash表，大概4*20M*2=160M。用calloc初始化为全零。
+    int *maps = (int *)calloc(1001 * 20001 * 2, sizeof(int));
+    // 前缀和可能是负数，把指针放到中间位置
+    int *map = maps + 1001 * 20001 * 1;
+    // 补一个最前面的前缀和，用了下标0
+    int sum = 0;
+    map[sum]++;
+    // 下标从1开始，注意=
+    for (int i = 1; i <= numsSize; i++) {
+        // 注意-1
+        sum += nums[i - 1];
+        if (map[sum - k] > 0) {
+            count += map[sum - k];
+        }
+        map[sum]++;
+    }
+    free(maps);
+    return count;
+}

@@ -1,0 +1,11 @@
+int main() {
+	int 123a = 21;
+	int b = 10;
+	int c;
+	char 1e='y';
+	char msg[] = "hello!";
+    double 00d;
+	c = a + b;
+	printf("a+b的值是%d", c);
+	return 0;
+}//#

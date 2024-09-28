@@ -1,0 +1,14 @@
+int main() {
+
+	char res = '1;
+	char tt = '\t;
+	if('a == 97)
+	
+	char str1[] = "zxcv
+	char str2[] = "this is a string;
+	char *str3  = "hello world;
+	"true = 1;
+	printf("%c", res);
+	
+    return 0;
+}
