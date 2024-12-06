@@ -1,1 +1,4 @@
 # BUPT-compile
+目前，exp2_LL_auto.cpp中的Follow集的求法写的不好
+exp2_LR_auto.cpp中的closure求法有误
+但对于这道题够用了

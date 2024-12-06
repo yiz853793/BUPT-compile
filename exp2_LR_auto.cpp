@@ -62,20 +62,34 @@ ProductionRule initGramma() {
     return gramma;
 }
 
+// 项目类
 class item{
 public:
-    char left, end;
-    int idx, dotPos;
+    // 项目左侧
+    char left;
+    // 项目终结符
+    char end;
+    // 生成式编号
+    int idx;
+    // 项目中点的位置
+    int dotPos;
+    // 项目右侧
     std::string sentence;
 
     item(char left, char end, int idx, std::string sen): left(left), end(end), idx(idx), sentence(sen){
         this->dotPos = 0;
     }
+    // 获取到点后的字符后构造新的项目
     item next() const ;
+    // 是否是归约项目
     bool isReduction() const ;
+    // 获取期望接收的字符
     char expect() const ;
+    // 获取生成式编号
     int itemIdx() const;
+    // 获取项目终结符
     char itemEnd() const;
+    // 获取新项目的新终结符
     char newEnd() const ;
     bool operator<(const item& other) const;
 };
@@ -120,12 +134,16 @@ bool item::operator<(const item& other) const {
     return this->idx < other.idx;
 }
 
+// 求状态闭包
 std::set<item> closure(ProductionRule gramma, std::set<item> J){
     std::set<item> ans = J;
     std::vector<item> ansSt;
+    // 将当前项目推入队列
     for(auto& it : J){
         ansSt.push_back(it);
     }
+    // 遍历队列中的项目，如果接收非终结符，计算新的项目
+    // 如果前面不存在该项目，推入队列，加入闭包
     for(int i = 0; i < ansSt.size(); i++){
         auto it = ansSt[i];
         char dotCh = it.expect();
@@ -182,14 +200,14 @@ bool setEqual(std::set<item> ItemA, std::set<item> ItemB){
 //     for(int i = 0; i < this->dotPos; i++){
 //         ans.push_back(sentence[i]);
 //     }
-//     ans.push_back('|');
+//     ans.append(" \\textbullet ");
 //     for(int i = this->dotPos; i < this->sentence.size(); i++){
 //         ans.push_back(sentence[i]);
 //     }
 //     return ans;
 // }
 
-int findItemSet(std::vector<std::set<item>> condition, std::set<item> J){
+int findConditionSet(std::vector<std::set<item>> condition, std::set<item> J){
     int siz = condition.size();
     for(int i = 0; i < siz; i++){
         if(setEqual(condition[i], J)){
@@ -199,45 +217,54 @@ int findItemSet(std::vector<std::set<item>> condition, std::set<item> J){
     return -1;
 }
 
-int ERR;
-LRtable createLRtable(ProductionRule gramma){
+// 错误编号，在所有状态编号之后
+int ERR; 
+// 创建LR分析表，LR[state][Ch] < 0时，该值表示通过生成式-LR[state][Ch]归约
+// LR[state][Ch] = 0，表示识别成功
+// LR[state][Ch] > 0，值为下一个状态
+LRtable createLRTable(ProductionRule grammar){
     LRtable ans;
-    std::vector<std::set<item>> condition;
+    // 状态队列
+    std::vector<std::set<item>> conditionSets;
+    // 起始符的所有生成式构建项目并求闭包，为初始状态，状态编号0
     for(auto& it : isBegin){
         if(it.second){
-            std::set<item> fir;
-            for(auto& ii : gramma[it.first]){
-                fir.insert(item(it.first, '$', ii.second, ii.first));
+            std::set<item> firstSet;
+            for(auto& rule : grammar[it.first]){
+                firstSet.insert(item(it.first, '$', rule.second, rule.first));
             }
-            fir = closure(gramma, fir);
-            condition.push_back(fir);
+            firstSet = closure(grammar, firstSet);
+            conditionSets.push_back(firstSet);
         }
     }
 
-    // for(int i = 0; i < condition.size(); i++){
-    //     std::set<item> oneCond = condition[i];
-    // }
-    for(int i = 0; i < condition.size(); i++){
-        auto& it = condition[i];
-        std::map<char, std::set<item>> k;
-        for(auto& ii : it){
-            if(ii.isReduction()){
-                ans[i][ii.itemEnd()] = -ii.itemIdx();
+    // 遍历每一个状态
+    // 如果一个项目是归约项目，那么LR[state][end] = -idx
+    // 其余按照期待接收的字符分类，并计算移进后的新项目
+    // 分类后求闭包，成下一个状态
+    // 如果该状态之前存在，找到它的状态号，LR[state][end] = stateIdx
+    // 否则状态推入状态队列中，LR[state][end] = newStateIdx
+    for(int i = 0; i < conditionSets.size(); i++){
+        auto& stateItems = conditionSets[i];
+        std::map<char, std::set<item>> transitionMap;
+        for(auto& stateItem : stateItems){
+            if(stateItem.isReduction()){
+                ans[i][stateItem.itemEnd()] = -stateItem.itemIdx();
             }else{
-                k[ii.expect()].insert(ii.next());
+                transitionMap[stateItem.expect()].insert(stateItem.next());
             }
         }
-        for(auto& ii : k){
-
-            // std::cout << "( " << i << ", " << ii.first << ") = closure( ";
-            // std::map<smallItem, std::set<char>> t;
-            // for(auto& i : ii.second){
-            //     t[smallItem(i.left, i.dotPos, i.sentence)].insert(i.end);
+        for(auto& transition : transitionMap){
+            // debug
+            // std::cout << "( " << i << ", " << transition.first << ") = closure( ";
+            // std::map<smallItem, std::set<char>> tempMap;
+            // for(auto& i : transition.second){
+            //     tempMap[smallItem(i.left, i.dotPos, i.sentence)].insert(i.end);
             // }
             // std::cout << " {" ;
-            // for(auto& tt : t){
-            //     smallItem tmp = tt.first;
-            //     std::cout << "[ " << tmp.print() << ", ";
+            // for(auto& tt : tempMap){
+            //     smallItem temp = tt.first;
+            //     std::cout << "[ " << temp.print() << ", ";
             //     for(auto& i : tt.second){
             //         std::cout << i;
             //     }
@@ -245,38 +272,41 @@ LRtable createLRtable(ProductionRule gramma){
             // }
             // std::cout << " } )" << std::endl;
 
-
-            auto tmp = closure(gramma, ii.second);
-            int nextCon = findItemSet(condition, tmp);
-            if(nextCon == -1){
-                nextCon = condition.size();
-                condition.push_back(tmp);
+            auto temp = closure(grammar, transition.second);
+            int nextCondition = findConditionSet(conditionSets, temp);
+            if(nextCondition == -1){
+                nextCondition = conditionSets.size();
+                conditionSets.push_back(temp);
             }
-            ans[i][ii.first] = nextCon;
+            ans[i][transition.first] = nextCondition;
         }
     }
 
-    ERR = condition.size();
-    // for(int j = 0; j < condition.size(); j++){
-    //     auto it = condition[j];
-    //     std::map<smallItem, std::set<char>> t;
+    ERR = conditionSets.size();
+    // debug
+    // for(int j = 0; j < conditionSets.size(); j++){
+    //     auto it = conditionSets[j];
+    //     std::map<smallItem, std::set<char>> tempMap;
 
-    //     for(auto& i : it){
-    //         t[smallItem(i.left, i.dotPos, i.sentence)].insert(i.end);
+    //     for(auto& item : it){
+    //         tempMap[smallItem(item.left, item.dotPos, item.sentence)].insert(item.end);
     //     }
 
-    //     std::cout << j;
+    //     std::cout << "\\texttt{$I_{" << j << "}$:} \\newline" << std::endl;;
 
-    //     std::cout << "\t :{";
-    //     for(auto& tt : t){
-    //         smallItem tmp = tt.first;
-    //         std::cout << "[ " << tmp.print() << ", ";
+    //     std::cout << "\\texttt{\\{} \\newline" << std::endl;
+    //     for(auto& tt : tempMap){
+    //         smallItem temp = tt.first;
+    //         std::cout << "\\texttt{\t[ " << temp.print() << ",\t";
     //         for(auto& i : tt.second){
+    //             if(i == '$'){
+    //                 std::cout << "\\";
+    //             }
     //             std::cout << i;
     //         }
-    //         std::cout << " ], ";
+    //         std::cout << " ]} \\newline" << std::endl;
     //     }
-    //     std::cout << "}" << std::endl;
+    //     std::cout << "\\texttt{\\}} \\newline" << std::endl;
     // }
     return ans;
 }
@@ -328,7 +358,7 @@ int Action(LRtable LR, int Pos, char Ch){
 int main(){
     ProductionRule gramma = initGramma();
     Stack st;
-    LRtable LR = createLRtable(gramma);
+    LRtable LR = createLRTable(gramma);
     // std::cout << LR.size() << std::endl;
 
     // for(auto& it : LR){
@@ -337,6 +367,66 @@ int main(){
     //     }
     //     std::cout << std::endl;
     // }
+    // std :: cout << "\\hline ";
+
+    // for(auto& it : Terminate){
+    //     std :: cout << " & " << it ;
+    // }
+    // std :: cout << " & $ " ;
+    // for(auto & it : NonTerminate){
+    //     std :: cout << " & " << it ;
+    // }
+    // std :: cout << " \\\\ " << std::endl;
+
+    // for(auto& it : LR){
+    //     std::cout << "\\hline " << it.first << " ";
+    //     auto a = it.second;
+    //     for(auto& it : Terminate){
+    //         if(a.find(it) == a.end()){
+    //             std :: cout << " & ";
+    //         }else{
+    //             int j = a[it];
+    //             if(j == 0){
+    //                 std::cout << " & acc";
+    //             }else if(j > 0){
+    //                 std::cout << " & " << j;
+    //             }else{
+    //                 j = -j;
+    //                 std::cout << " & R" << j;
+    //             }
+    //         }
+    //     }
+    //     if(a.find('$') == a.end()){
+    //         std :: cout << " & ";
+    //     }else{
+    //         int j = a['$'];
+    //         if(j == 0){
+    //             std::cout << " & acc";
+    //         }else if(j > 0){
+    //             std::cout << " & " << j;
+    //         }else{
+    //             j = -j;
+    //             std::cout << " & R" << j;
+    //         }
+    //     }
+    //     for(auto & it : NonTerminate){
+    //         if(a.find(it) == a.end()){
+    //             std :: cout << " & ";
+    //         }else{
+    //             int j = a[it];
+    //             if(j == 0){
+    //                 std::cout << " & acc";
+    //             }else if(j > 0){
+    //                 std::cout << " & " << j;
+    //             }else{
+    //                 j = -j;
+    //                 std::cout << " & R" << j;
+    //             }
+    //         }
+    //     }
+    //     std :: cout << " \\\\ " << std::endl;
+    // }
+
     std::string buffer = input();
 
     int siz = buffer.size(), i = 0;
@@ -366,6 +456,5 @@ int main(){
         }
     }
     
-
     return 0;
 }

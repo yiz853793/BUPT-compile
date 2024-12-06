@@ -12,7 +12,6 @@ typedef std::map<char, std::set<char> > FirstFollowTable;
 
 std::set<char> NonTerminate, Terminate;
 std::map<char, bool> isBegin;
-std::map<char, bool> epsilonCache;
 
 const char* sentence[] = {"","TA", "+TA", "-TA", "", "FB", "*FB", "/FB", "", "(E)", "n"};
 
@@ -72,51 +71,6 @@ ProductionRule initGramma() {
     };
 
     return gramma;
-}
-
-// 一个非终结符能否推导出epsilon，这个函数可能死循环，条件是有左递归
-// 包括A->Ab、 {A->Bb, B->Aa}、 A->aAb且epsilon属于First(a)
-bool haveEpsilon(ProductionRule gramma, char T) {
-    if (epsilonCache.find(T) != epsilonCache.end()) {
-        return epsilonCache[T];  // 如果缓存中已经有结果，直接返回
-    }
-
-    // 如果该非终结符的产生式中有空串（即 ""），则该非终结符能推导出空串
-    for (auto& rule : gramma[T]) {
-        if (rule.first.empty()) {
-            epsilonCache[T] = true;
-            return true;
-        }
-    }
-
-    // 如果产生式中没有空串，检查它的所有符号
-    bool canDeriveEpsilon = true;
-    // 遍历每一个分句
-    for (auto& rule : gramma[T]) {
-        canDeriveEpsilon = true;
-
-        // 遍历产生式中的每个符号
-        for (char c : rule.first) {
-            // 如果该符号是终结符，这个产生式
-            if (Terminate.find(c) != Terminate.end()) {
-                canDeriveEpsilon = false;
-                break;
-            }
-            if (!haveEpsilon(gramma, c)) {
-                canDeriveEpsilon = false;
-                break;
-            }
-        }
-
-        // 如果该产生式的所有符号都能推导出空串，则当前非终结符 T 能推导出空串
-        if (canDeriveEpsilon) {
-            epsilonCache[T] = true;
-            return true;
-        }
-    }
-
-    epsilonCache[T] = false;  // 如果没有产生式能推导出空串
-    return false;
 }
 
 // 获取一个字符串的First集
